@@ -76,7 +76,7 @@ const rebase=(m,b)=>{const ks=[...m.keys()].sort((a,b)=>a-b), bk=m.has(b)?b:ks.f
 const divide=(a,b,f=100)=>{const o=new Map(); a.forEach((v,k)=>{ if(b.has(k)) o.set(k,v/b.get(k)*f)}); return o;};
 const xy=m=>{const ks=[...m.keys()].sort((a,b)=>a-b); return {x:ks.map(lab),y:ks.map(k=>m.get(k))};};
 const sels=id=>[...$(id).selectedOptions].map(o=>o.value);
-const theme=()=>{const d=matchMedia('(prefers-color-scheme:dark)').matches; return {fg:d?'#e8e8e4':'#1d1d1b',gr:d?'#38383d':'#e4e4de'};};
+const theme=()=>{const d=matchMedia('(prefers-color-scheme:dark)').matches; return {fg:d?'#e8e8e4':'#1d1d1b',gr:d?'#38383d':'#e4e4de',bg:d?'#202023':'#ffffff'};};
 const qlab=k=>`${Math.floor(k/12)} Q${Math.floor(k%12/3)+1}`;
 
 /* ---- Egységes, érték szerint csökkenő tooltip (a gydeak.github.io/zenekarok mintájára) ---- */
@@ -122,6 +122,8 @@ function attachSortedHover(id){
     const rows=rowsForX(id,x); if(rows.length) renderTooltipHTML(rows,x,{x:t.clientX,y:t.clientY}); };
   gd.addEventListener('touchstart',handle,{passive:true}); gd.addEventListener('touchmove',handle,{passive:true});
   gd.addEventListener('touchend',mark,{passive:true}); gd.addEventListener('touchcancel',mark,{passive:true}); }
+const EXPORT_SCALE=3;
+const plotlyConfig=f=>({responsive:true,displaylogo:false,separators:', ',toImageButtonOptions:{format:'png',filename:f,scale:EXPORT_SCALE}});
 const SPIKE={showspikes:true,spikemode:'across',spikethickness:1,spikedash:'dot',spikecolor:'#999'};
 
 function render1(){
@@ -131,8 +133,8 @@ function render1(){
   const keys=[...new Set(os.flatMap(o=>[...(cols[`${o} ${kind}`]||new Map()).keys()]))].filter(inY).sort((a,b)=>a-b);
   const traces=os.filter(o=>cols[`${o} ${kind}`]).map((o,i)=>({_unitSuffix:'Ft',_decimals:0,hoverinfo:'none',type:'scatter',mode:'lines+markers',connectgaps:false,marker:{size:6,color:PAL[i%PAL.length]},line:{width:2.5,color:PAL[i%PAL.length]},name:o,x:keys.map(qlab),y:keys.map(k=>cols[`${o} ${kind}`].get(k)??null)}));
   chartTracesRef.c1=traces;
-  Plotly.react('c1',traces,{title:{text:`Negyedéves átlagbér – ${kind}`,font:{size:15}},hovermode:'x',paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:t.fg},
-    margin:{t:50,r:20,b:85,l:70},showlegend:true,legend:{orientation:'h',yref:'container',y:0.01,yanchor:'bottom'},xaxis:{type:'category',tickangle:-45,gridcolor:t.gr,...SPIKE},yaxis:{gridcolor:t.gr,title:'Ft / hó',tickformat:',.0f',separatethousands:true}},{responsive:true,displaylogo:false,separators:', '}).then(()=>attachSortedHover('c1'));
+  Plotly.react('c1',traces,{title:{text:`Negyedéves átlagbér – ${kind}`,font:{size:15}},hovermode:'x',paper_bgcolor:t.bg,plot_bgcolor:t.bg,font:{color:t.fg},
+    margin:{t:50,r:20,b:85,l:70},showlegend:true,legend:{orientation:'h',yref:'container',y:0.01,yanchor:'bottom'},xaxis:{type:'category',tickangle:-45,gridcolor:t.gr,...SPIKE},yaxis:{gridcolor:t.gr,title:'Ft / hó',tickformat:',.0f',separatethousands:true}},plotlyConfig('zenekari_berek_nyers')).then(()=>attachSortedHover('c1'));
 }
 const qN=k=>Math.floor(k/3), qL=n=>`${Math.floor(n/4)} Q${n%4+1}`;
 const toQ=m=>{const o=new Map(); m.forEach((v,k)=>o.set(qN(k),v)); return o;};
@@ -157,9 +159,9 @@ function render2(){
   traces.forEach(tr=>{tr.x=cat; tr.y=cat.map((_,i)=>tr._m.get(lo+i)??null); delete tr._m;});
   chartTracesRef.c2=traces;
   const bl=qL(b), ttl={idx:`Bérek és ${rname} – bázisindex (${bl} = 100)`,ratio:`Bér / ${rname} (${bl} = 100)`,pct:`Bér / ${rname} (%)`}[mode];
-  Plotly.react('c2',traces,{title:{text:ttl,font:{size:14}},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:t.fg},
+  Plotly.react('c2',traces,{title:{text:ttl,font:{size:14}},paper_bgcolor:t.bg,plot_bgcolor:t.bg,font:{color:t.fg},
     margin:{t:50,r:20,b:85,l:60},showlegend:true,legend:{orientation:'h',yref:'container',y:0.01,yanchor:'bottom'},hovermode:'x',xaxis:{type:'category',categoryarray:cat,tickangle:-45,gridcolor:t.gr,...SPIKE},yaxis:{gridcolor:t.gr,title:ytitle},
-    shapes:mode==='pct'?[]:[{type:'line',xref:'paper',x0:0,x1:1,y0:100,y1:100,line:{color:t.gr,width:1.5}}]},{responsive:true,displaylogo:false,separators:', '}).then(()=>attachSortedHover('c2'));
+    shapes:mode==='pct'?[]:[{type:'line',xref:'paper',x0:0,x1:1,y0:100,y1:100,line:{color:t.gr,width:1.5}}]},plotlyConfig('zenekari_berek_viszonyitas')).then(()=>attachSortedHover('c2'));
 }
 function fill(){
   orchs=[...new Set(Object.keys(cols).map(k=>k.match(/^(.*) (alkalmazottak|vezetők)$/)).filter(Boolean).map(m=>m[1]))];
