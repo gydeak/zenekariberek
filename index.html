@@ -4,14 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Zenekari bérek vs. infláció és GDP</title>
-<!-- Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-8KWS6F1E7N"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-8KWS6F1E7N');
-</script>
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
 :root{--bg:#fafaf8;--fg:#1d1d1b;--mut:#6b6b66;--card:#fff;--bd:#dcdcd6;--ac:#1f4e79}
@@ -34,7 +26,7 @@ table{border-collapse:collapse;width:100%;font-size:.88rem}th,td{padding:5px 8px
 <main>
 <div class="sub">Kulturális finanszírozás · Magyarország</div>
 <h1>Zenekari bérek az infláció és a GDP tükrében</h1>
-<p class="lead">Negyedéves bérstatisztikák az együttesek honlapjairól (Info tv.), összevetve a magyar inflációval (Eurostat prc_hicp_minr, 2025=100), a GDP volumenindexével (Eurostat namq_10_gdp, B1GQ, CP_MNAC, NSA) és az átlagbérrel (KSH). Az összevetés negyedéves: a GDP gördülő 4 negyedéves átlaggal, az infláció negyedéves (3 havi) átlaggal szerepel. </p>
+<p class="lead">Negyedéves bérstatisztikák az együttesek honlapjairól (Google Sheets), összevetve a magyar HICP-inflációval (Eurostat prc_hicp_minr, 2025=100), a GDP volumenindexével (Eurostat namq_10_gdp, B1GQ, CLV_I20, NSA) és az átlagbér-sorokkal. Az összevetés negyedéves: a GDP gördülő 4 negyedéves átlaggal, az infláció negyedéves (3 havi) átlaggal szerepel. </p>
 <p class="status" id="status">Adatok betöltése…</p>
 <details class="note"><summary>Kézi fájlfeltöltés (ha az automatikus betöltés nem sikerül)</summary><input type="file" id="file" accept=".csv"></details>
 
@@ -140,7 +132,7 @@ function render1(){
   const traces=os.filter(o=>cols[`${o} ${kind}`]).map((o,i)=>({_unitSuffix:'Ft',_decimals:0,hoverinfo:'none',type:'scatter',mode:'lines+markers',connectgaps:false,marker:{size:6,color:PAL[i%PAL.length]},line:{width:2.5,color:PAL[i%PAL.length]},name:o,x:keys.map(qlab),y:keys.map(k=>cols[`${o} ${kind}`].get(k)??null)}));
   chartTracesRef.c1=traces;
   Plotly.react('c1',traces,{title:{text:`Negyedéves átlagbér – ${kind}`,font:{size:15}},hovermode:'x',paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:t.fg},
-    margin:{t:50,r:20,b:70,l:70},legend:{orientation:'h',y:-0.2},xaxis:{type:'category',tickangle:-45,gridcolor:t.gr,...SPIKE},yaxis:{gridcolor:t.gr,title:'Ft / hó',tickformat:',.0f',separatethousands:true}},{responsive:true,displaylogo:false,separators:', '}).then(()=>attachSortedHover('c1'));
+    margin:{t:50,r:20,b:85,l:70},showlegend:true,legend:{orientation:'h',yref:'container',y:0.01,yanchor:'bottom'},xaxis:{type:'category',tickangle:-45,gridcolor:t.gr,...SPIKE},yaxis:{gridcolor:t.gr,title:'Ft / hó',tickformat:',.0f',separatethousands:true}},{responsive:true,displaylogo:false,separators:', '}).then(()=>attachSortedHover('c1'));
 }
 const qN=k=>Math.floor(k/3), qL=n=>`${Math.floor(n/4)} Q${n%4+1}`;
 const toQ=m=>{const o=new Map(); m.forEach((v,k)=>o.set(qN(k),v)); return o;};
@@ -166,7 +158,7 @@ function render2(){
   chartTracesRef.c2=traces;
   const bl=qL(b), ttl={idx:`Bérek és ${rname} – bázisindex (${bl} = 100)`,ratio:`Bér / ${rname} (${bl} = 100)`,pct:`Bér / ${rname} (%)`}[mode];
   Plotly.react('c2',traces,{title:{text:ttl,font:{size:14}},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:t.fg},
-    margin:{t:50,r:20,b:60,l:60},legend:{orientation:'h',y:-0.2},hovermode:'x',xaxis:{type:'category',categoryarray:cat,tickangle:-45,gridcolor:t.gr,...SPIKE},yaxis:{gridcolor:t.gr,title:ytitle},
+    margin:{t:50,r:20,b:85,l:60},showlegend:true,legend:{orientation:'h',yref:'container',y:0.01,yanchor:'bottom'},hovermode:'x',xaxis:{type:'category',categoryarray:cat,tickangle:-45,gridcolor:t.gr,...SPIKE},yaxis:{gridcolor:t.gr,title:ytitle},
     shapes:mode==='pct'?[]:[{type:'line',xref:'paper',x0:0,x1:1,y0:100,y1:100,line:{color:t.gr,width:1.5}}]},{responsive:true,displaylogo:false,separators:', '}).then(()=>attachSortedHover('c2'));
 }
 function fill(){
@@ -181,7 +173,7 @@ async function init(){
   try{ cols=parseCSV(await (await fetch(SHEET)).text()); fill(); }catch(e){ msgs.push('Bérek: betöltés sikertelen (használd a kézi feltöltést).'); }
   render1(); 
   try{ hicp=await euSeries('prc_hicp_minr','freq=M&unit=I25&coicop18=TOTAL&geo=HU'); }catch(e){ msgs.push('HICP: betöltés sikertelen.'); }
-  try{ gdp=await euSeries('namq_10_gdp','freq=Q&unit=CP_MNAC&s_adj=NSA&na_item=B1GQ&geo=HU'); }catch(e){ msgs.push('GDP: betöltés sikertelen.'); }
+  try{ gdp=await euSeries('namq_10_gdp','freq=Q&unit=CLV_I20&s_adj=NSA&na_item=B1GQ&geo=HU'); }catch(e){ msgs.push('GDP: betöltés sikertelen.'); }
   $('status').textContent=msgs.length?msgs.join(' '):'Adatok betöltve (Google Sheets, Eurostat).'; $('status').className='status'+(msgs.length?' err':'');
   render2();
 }
