@@ -27,14 +27,14 @@ select,input{width:100%;padding:6px;border:1px solid var(--bd);border-radius:6px
 select[multiple]{height:170px}small,.note{color:var(--mut);font-size:.8rem}
 .status{font-size:.85rem;color:var(--mut)}.err{color:#c0392b}
 table{border-collapse:collapse;width:100%;font-size:.88rem}th,td{padding:5px 8px;border-bottom:1px solid var(--bd);text-align:right}th:first-child,td:first-child{text-align:left}
-.chart{width:100%;height:520px}h2{font-size:1.15rem;margin:1.4em 0 .2em}
+.chart{width:100%}h2{font-size:1.15rem;margin:1.4em 0 .2em}
 </style>
 </head>
 <body>
 <main>
 <div class="sub">Kulturális finanszírozás · Magyarország</div>
 <h1>Zenekari bérek az infláció és a GDP tükrében</h1>
-<p class="lead">Negyedéves bérstatisztikák az együttesek honlapjairól (Google Sheets), összevetve a magyar HICP-inflációval (Eurostat prc_hicp_minr, 2025=100), a GDP volumenindexével (Eurostat namq_10_gdp, B1GQ, CLV_I20, NSA) és az átlagbér-sorokkal. Az összevetés negyedéves: a GDP gördülő 4 negyedéves átlaggal, az infláció negyedéves (3 havi) átlaggal szerepel. </p>
+<p class="lead">Negyedéves bérstatisztikák az együttesek honlapjairól (Info tv.), összevetve a magyar inflációval (Eurostat prc_hicp_minr, 2025=100), a GDP volumenindexével (Eurostat namq_10_gdp, B1GQ, CP_MNAC, NSA) és az átlagbérrel (KSH). Az összevetés negyedéves: a GDP gördülő 4 negyedéves átlaggal, az infláció negyedéves (3 havi) átlaggal szerepel. </p>
 <p class="status" id="status">Adatok betöltése…</p>
 <details class="note"><summary>Kézi fájlfeltöltés (ha az automatikus betöltés nem sikerül)</summary><input type="file" id="file" accept=".csv"></details>
 
@@ -53,7 +53,7 @@ table{border-collapse:collapse;width:100%;font-size:.88rem}th,td{padding:5px 8px
     <select id="r2"><option value="gdp">GDP (Eurostat)</option><option value="hicp">Infláció – HICP (Eurostat)</option><option value="Átlagbér">Átlagbér (csv)</option><option value="Költségvetési átlagbér">Költségvetési átlagbér (csv)</option><option value="Budapesti előadóművészeti átlagbér">Budapesti előadóművészeti átlagbér (csv)</option></select></div>
   <div><label for="m2">Megjelenítés</label><select id="m2"><option value="idx">Bázisindex (mindkettő = 100)</option><option value="ratio">Arány: bér / viszonyítási mutató (bázis = 100)</option><option value="pct">Arány %-ban (csak átlagbér-sorokkal)</option></select>
     <label for="base" style="margin-top:10px">Bázis negyedév (= 100)</label><select id="base"></select></div>
-</div><div id="c2" class="chart"></div><p class="note">Negyedéves felbontás. Bérek és átlagbér-sorok: nyers negyedéves értékek. Infláció: a negyedévbe eső 3 hónap átlaga. GDP: gördülő 4 negyedéves átlag (csak ha mind a 4 negyedév megvan). Ha egy sorban nincs adat a bázisnegyedévben, a bázis az első utána következő érték.</p></div>
+</div><div id="c2" class="chart"></div><p class="note">Negyedéves felbontás. Bérek és átlagbér-sorok: nyers negyedéves értékek. Infláció: a negyedévbe eső 3 hónap átlaga. GDP: gördülő 4 negyedéves átlag (csak ha mind a 4 negyedév megvan). Bázisnak csak olyan negyedév választható, amikor minden kiválasztott zenekarnak (és a viszonyítási mutatónak) van adata.</p></div>
 </main>
 <script>
 const SHEET='https://docs.google.com/spreadsheets/d/e/2PACX-1vSXKjQce7KB31DSnKRMBakLQI5ggxzpYqKMtGvrfi9PJiwPjVl2VJ4K4xjkSGKTN0GMCoVYYyMGJsaX/pub?gid=1415065546&single=true&output=csv';
@@ -134,15 +134,20 @@ const EXPORT_SCALE=3;
 const plotlyConfig=f=>({responsive:true,displaylogo:false,separators:', ',toImageButtonOptions:{format:'png',filename:f,scale:EXPORT_SCALE}});
 const SPIKE={showspikes:true,spikemode:'across',spikethickness:1,spikedash:'dot',spikecolor:'#999'};
 
+// legend a tengelyfeliratok alatt, a tényleges (becsült) feliratmagassághoz képest; a grafikon magassága ehhez igazodik
+function legendBox(names,id){ const W=$(id).clientWidth||900, avail=W-100, PH=400, tick=52, gap=6; let rows=1,x=0;
+  names.forEach(n=>{const w=38+String(n).length*7; if(x+w>avail&&x>0){rows++;x=0;} x+=w;});
+  const lh=rows*21+4, b=tick+gap+lh+8;
+  return {height:50+PH+b, margin:{t:50,r:20,b,l:70}, legend:{orientation:'h',yref:'paper',y:-(tick+gap)/PH,yanchor:'top',xanchor:'left',x:0}}; }
 function render1(){
   if(!orchs.length) return;
   const os=sels('o1'), ys=sels('y1').map(Number), kind=$('k1').value, t=theme();
   const inY=k=>!ys.length||ys.includes(Math.floor(k/12));
   const keys=[...new Set(os.flatMap(o=>[...(cols[`${o} ${kind}`]||new Map()).keys()]))].filter(inY).sort((a,b)=>a-b);
   const traces=os.filter(o=>cols[`${o} ${kind}`]).map((o,i)=>({_unitSuffix:'Ft',_decimals:0,hoverinfo:'none',type:'scatter',mode:'lines+markers',connectgaps:false,marker:{size:6,color:PAL[i%PAL.length]},line:{width:2.5,color:PAL[i%PAL.length]},name:o,x:keys.map(qlab),y:keys.map(k=>cols[`${o} ${kind}`].get(k)??null)}));
-  chartTracesRef.c1=traces;
+  chartTracesRef.c1=traces; const lb=legendBox(traces.map(x=>x.name),'c1');
   Plotly.react('c1',traces,{title:{text:`Negyedéves átlagbér – ${kind}`,font:{size:15}},hovermode:'x',paper_bgcolor:t.bg,plot_bgcolor:t.bg,font:{color:t.fg},
-    margin:{t:50,r:20,b:85,l:70},showlegend:true,legend:{orientation:'h',yref:'container',y:0.01,yanchor:'bottom'},xaxis:{type:'category',tickangle:-45,gridcolor:t.gr,...SPIKE},yaxis:{gridcolor:t.gr,title:'Ft / hó',tickformat:',.0f',separatethousands:true}},plotlyConfig('zenekari_berek_nyers')).then(()=>attachSortedHover('c1'));
+    height:lb.height,margin:lb.margin,showlegend:true,legend:lb.legend,xaxis:{type:'category',tickangle:-45,automargin:true,gridcolor:t.gr,...SPIKE},yaxis:{automargin:true,gridcolor:t.gr,title:'Ft / hó',tickformat:',.0f',separatethousands:true}},plotlyConfig('zenekari_berek_nyers')).then(()=>attachSortedHover('c1'));
 }
 const qN=k=>Math.floor(k/3), qL=n=>`${Math.floor(n/4)} Q${n%4+1}`;
 const toQ=m=>{const o=new Map(); m.forEach((v,k)=>o.set(qN(k),v)); return o;};
@@ -151,31 +156,40 @@ const hicpQ=m=>{const a=new Map(); m.forEach((v,k)=>{const n=qN(k),e=a.get(n)||[
 const rollQ4=m=>{const o=new Map(); m.forEach((v,n)=>{const vs=[0,1,2,3].map(i=>m.get(n-i)); if(vs.every(x=>x!=null)) o.set(n,vs.reduce((a,b)=>a+b,0)/4);}); return o;};
 function render2(){
   if(!orchs.length) return;
-  const os=sels('o2'), kind=$('k2').value, r=$('r2').value, mode=$('m2').value, t=theme(), b=+$('base').value;
+  const os=sels('o2'), kind=$('k2').value, r=$('r2').value, mode=$('m2').value, t=theme();
   const isCsv=!['gdp','hicp'].includes(r);
   const refS=r==='gdp'?(gdp&&rollQ4(toQ(gdp))):r==='hicp'?(hicp&&hicpQ(hicp)):toQ(cols[r]||new Map());
   const rname={gdp:'GDP (Eurostat, gördülő 4Q átlag)',hicp:'Infláció – HICP (Eurostat, negyedéves átlag)'}[r]||r;
+  // bázis csak olyan negyedév lehet, amikor minden kiválasztott zenekarnak (és a viszonyítási mutatónak) van adata
+  const sets=os.map(o=>cols[`${o} ${kind}`]).filter(Boolean).map(c=>new Set(toQ(c).keys()));
+  if(mode!=='pct'&&refS) sets.push(new Set(refS.keys()));
+  const bases=sets.length?[...sets[0]].filter(n=>sets.every(z=>z.has(n))).sort((x,y)=>x-y):[];
+  const sel=$('base'), prev=+sel.value; sel.innerHTML='';
+  bases.forEach(n=>sel.add(new Option(qL(n),n)));
+  if(!bases.length) sel.add(new Option('nincs közös negyedév','')); else sel.value=bases.includes(prev)?prev:(bases.includes(2022*4)?2022*4:bases[0]);
+  sel.disabled=mode==='pct'||!bases.length; const b=bases.length?+sel.value:NaN;
   const traces=[]; let lo=1e9, hi=-1e9, ytitle='Index', ci=0;
   const add=(name,m,extra)=>{ if(!m||!m.size) return; const ks=[...m.keys()].sort((a,c)=>a-c); lo=Math.min(lo,ks[0]); hi=Math.max(hi,ks[ks.length-1]);
     const col=(extra.line&&extra.line.color)||PAL[ci++%PAL.length]; traces.push({name,_m:m,type:'scatter',mode:'lines+markers',connectgaps:false,hoverinfo:'none',_unitSuffix:ytitle==='%'?'%':'',_decimals:1,...extra,marker:{size:5,color:col},line:{...(extra.line||{}),color:col}}); };
-  os.forEach(o=>{ const c=cols[`${o} ${kind}`]; if(!c) return; const w=toQ(c), nm=`${o} ${kind}`;
+  os.forEach(o=>{ const c=cols[`${o} ${kind}`]; if(!c) return; const w=toQ(c), nm=o;
     if(mode==='idx') add(nm,rebase(w,b),{line:{width:2.5}});
-    else if(mode==='pct'&&isCsv&&refS){ ytitle='%'; add(`${nm} / ${r}`,divide(w,refS,100),{line:{width:2.5}}); }
-    else if(refS){ ytitle='Arány (bázis = 100)'; const a=rebase(w,b), z=rebase(refS,b); if(a&&z) add(`${nm} / ${rname}`,divide(a,z),{line:{width:2.5}}); } });
+    else if(mode==='pct'&&isCsv&&refS){ ytitle='%'; add(nm,divide(w,refS,100),{line:{width:2.5}}); }
+    else if(refS){ ytitle='Arány (bázis = 100)'; const a=rebase(w,b), z=rebase(refS,b); if(a&&z) add(nm,divide(a,z),{line:{width:2.5}}); } });
   if(mode==='idx'&&refS) add(rname,rebase(refS,b),{line:{width:3,dash:'dash',color:'#c0392b'},marker:{size:4}});
-  const cat=[]; for(let n=lo;n<=hi;n++) cat.push(qL(n));
+  const cat=[]; if(traces.length) for(let n=lo;n<=hi;n++) cat.push(qL(n));
   traces.forEach(tr=>{tr.x=cat; tr.y=cat.map((_,i)=>tr._m.get(lo+i)??null); delete tr._m;});
-  chartTracesRef.c2=traces;
-  const bl=qL(b), ttl={idx:`Bérek és ${rname} – bázisindex (${bl} = 100)`,ratio:`Bér / ${rname} (${bl} = 100)`,pct:`Bér / ${rname} (%)`}[mode];
+  chartTracesRef.c2=traces; const lb=legendBox(traces.map(x=>x.name),'c2');
+  const noData=(!bases.length&&mode!=='pct')?[{text:'Nincs olyan negyedév, amikor minden kiválasztott zenekarnak (és a viszonyítási mutatónak) van adata.',xref:'paper',yref:'paper',x:.5,y:.5,showarrow:false,font:{size:14}}]:[];
+  const bl=isNaN(b)?'–':qL(b), pre=`Negyedéves átlagbér – ${kind}`, ttl={idx:`${pre} és ${rname} – bázisindex (${bl} = 100)`,ratio:`${pre} / ${rname} (${bl} = 100)`,pct:`${pre} / ${rname} (%)`}[mode];
   Plotly.react('c2',traces,{title:{text:ttl,font:{size:14}},paper_bgcolor:t.bg,plot_bgcolor:t.bg,font:{color:t.fg},
-    margin:{t:50,r:20,b:85,l:60},showlegend:true,legend:{orientation:'h',yref:'container',y:0.01,yanchor:'bottom'},hovermode:'x',xaxis:{type:'category',categoryarray:cat,tickangle:-45,gridcolor:t.gr,...SPIKE},yaxis:{gridcolor:t.gr,title:ytitle},
+    height:lb.height,margin:lb.margin,showlegend:true,legend:lb.legend,annotations:noData,hovermode:'x',xaxis:{type:'category',categoryarray:cat,tickangle:-45,automargin:true,gridcolor:t.gr,...SPIKE},yaxis:{automargin:true,gridcolor:t.gr,title:ytitle},
     shapes:mode==='pct'?[]:[{type:'line',xref:'paper',x0:0,x1:1,y0:100,y1:100,line:{color:t.gr,width:1.5}}]},plotlyConfig('zenekari_berek_viszonyitas')).then(()=>attachSortedHover('c2'));
 }
 function fill(){
   orchs=[...new Set(Object.keys(cols).map(k=>k.match(/^(.*) (alkalmazottak|vezetők)$/)).filter(Boolean).map(m=>m[1]))];
   const def=['MNF','MRME','BFZ'], years=new Set(); Object.values(cols).forEach(m=>m.forEach((v,k)=>years.add(Math.floor(k/12))));
   ['o1','o2'].forEach(id=>{$(id).innerHTML=''; orchs.forEach(o=>{const x=new Option(o,o); x.selected=def.includes(o); $(id).add(x);});});
-  $('base').innerHTML=''; for(let n=2017*4;n<=2026*4+2;n++) $('base').add(new Option(qL(n),n,false,n===2022*4)); 
+  $('base').innerHTML=`<option value="${2022*4}">${qL(2022*4)}</option>`;
   $('y1').innerHTML=''; [...years].sort().reverse().forEach(y=>$('y1').add(new Option(y,y)));
 }
 async function init(){
